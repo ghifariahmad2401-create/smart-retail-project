@@ -1,626 +1,625 @@
 import sqlite3
-import os
 from datetime import datetime
 
-# ==========================================
-# 1. KONEKSI & INISIALISASI DATABASE
-# ==========================================
-DB_NAME = "smart_retail.db"
-
-def inisialisasi_database():
-    """Membuat tabel-tabel database dan user default jika belum ada."""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    
-    # Membuat Tabel Users
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            password TEXT,
-            role TEXT
-        )
-    ''')
-    
-    # Membuat Tabel Produk
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS produk (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nama_produk TEXT,
-            harga_modal INTEGER,
-            harga_jual INTEGER,
-            stok INTEGER
-        )
-    ''')
-    
-    # Membuat Tabel Transaksi
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS transaksi (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tanggal TEXT,
-            total_bayar INTEGER
-        )
-    ''')
-    
-    # Membuat Tabel Detail Transaksi
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS detail_transaksi (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            id_transaksi INTEGER,
-            id_produk INTEGER,
-            jumlah INTEGER,
-            subtotal INTEGER,
-            FOREIGN KEY(id_transaksi) REFERENCES transaksi(id),
-            FOREIGN KEY(id_produk) REFERENCES produk(id)
-        )
-    ''')
-    
-    # Insert Data Default User (Admin & Kasir) jika kosong
-    cursor.execute("SELECT COUNT(*) FROM users")
-    if cursor.fetchone()[0] == 0:
-        cursor.executemany("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", [
-            ('admin', '1234', 'Admin'),
-            ('kasir', '1234', 'Kasir')
-        ])
-        
-    # Insert Data Sesuai Studi Kasus jika kosong
-    cursor.execute("SELECT COUNT(*) FROM produk")
-    if cursor.fetchone()[0] == 0:
-        cursor.executemany("INSERT INTO produk (nama_produk, harga_modal, harga_jual, stok) VALUES (?, ?, ?, ?)", [
-            ('Beras 5 Kg', 65000, 75000, 20),
-            ('Gula 1 Kg', 15000, 18000, 30),
-            ('Minyak Goreng', 18000, 22000, 25),
-            ('Mie Instan', 2500, 3500, 100),
-            ('Kopi Sachet', 1000, 1500, 50)
-        ])
-        
-    conn.commit()
-    conn.close()
 
 # ==========================================
-# 2. MODUL LOGIN SISTEM
+# KONEKSI DATABASE
 # ==========================================
-def login_sistem():
-    """Fungsi otentikasi login pengguna."""
-    print("\n" + "="*35)
-    print("      LOGIN SYSTEM SMART-RETAIL      ")
-    print("="*35)
-    username = input("Username : ")
-    password = input("Password : ")
-    
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT username, role FROM users WHERE username=? AND password=?", (username, password))
-    user = cursor.fetchone()
-    conn.close()
-    
-    if user:
-        print(f"\n[✓] Login Berhasil! Selamat Datang, {user[0]} ({user[1]})")
-        return {"username": user[0], "role": user[1]}
-    else:
-        print("\n[X] Login Gagal! Username atau Password salah.")
-        return None
+
+conn = sqlite3.connect("smart_retail.db")
+cursor = conn.cursor()
+
 
 # ==========================================
-# 3. MODUL KELOLA PRODUK (CRUD)
+# MEMBUAT TABEL USERS
 # ==========================================
-def tambah_produk():
-    print("\n--- TAMBAH PRODUK BARU ---")
-    nama = input("Nama Barang : ")
-    harga_modal = int(input("Harga Modal : "))
-    harga_jual = int(input("Harga Jual  : "))
-    stok = int(input("Stok        : "))
-    
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO produk (nama_produk, harga_modal, harga_jual, stok) VALUES (?, ?, ?, ?)",
-                   (nama, harga_modal, harga_jual, stok))
-    conn.commit()
-    conn.close()
-    print("[✓] Produk berhasil ditambahkan!")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL
+)
+""")
+
+
+# ==========================================
+# MEMBUAT TABEL PRODUK
+# ==========================================
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS produk (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nama_produk TEXT NOT NULL,
+    harga_modal INTEGER NOT NULL,
+    harga_jual INTEGER NOT NULL,
+    stok INTEGER NOT NULL
+)
+""")
+
+
+# ==========================================
+# MEMBUAT TABEL TRANSAKSI
+# ==========================================
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS transaksi (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tanggal TEXT NOT NULL,
+    total_bayar INTEGER NOT NULL
+)
+""")
+
+
+# ==========================================
+# MEMBUAT TABEL DETAIL TRANSAKSI
+# ==========================================
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS detail_transaksi (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_transaksi INTEGER NOT NULL,
+    id_produk INTEGER NOT NULL,
+    jumlah INTEGER NOT NULL,
+    subtotal INTEGER NOT NULL,
+
+    FOREIGN KEY (id_transaksi)
+    REFERENCES transaksi(id),
+
+    FOREIGN KEY (id_produk)
+    REFERENCES produk(id)
+)
+""")
+
+
+# ==========================================
+# DATA USER AWAL
+# ==========================================
+
+users_awal = [
+    ("admin", "admin123", "admin"),
+    ("kasir", "kasir123", "kasir")
+]
+
+for username, password, role in users_awal:
+    cursor.execute("""
+    INSERT OR IGNORE INTO users
+    (username, password, role)
+    VALUES (?, ?, ?)
+    """, (username, password, role))
+
+
+# ==========================================
+# DATA PRODUK AWAL
+# ==========================================
+
+produk_awal = [
+    ("Beras 5 Kg", 65000, 75000, 20),
+    ("Gula 1 Kg", 15000, 18000, 30),
+    ("Minyak Goreng", 19000, 22000, 25),
+    ("Mie Instan", 2500, 3500, 100)
+]
+
+for nama, modal, jual, stok in produk_awal:
+
+    cursor.execute("""
+    INSERT INTO produk
+    (nama_produk, harga_modal, harga_jual, stok)
+    SELECT ?, ?, ?, ?
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM produk
+        WHERE nama_produk = ?
+    )
+    """, (nama, modal, jual, stok, nama))
+
+
+conn.commit()
+
+
+# ==========================================
+# FUNGSI LIHAT PRODUK
+# ==========================================
 
 def lihat_produk():
-    print("\n------------------------------------------------------------")
-    print(f"{'ID':<5} | {'Nama Barang':<25} | {'Harga Jual':<12} | {'Stok':<5}")
-    print("------------------------------------------------------------")
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, nama_produk, harga_jual, stok FROM produk")
-    for row in cursor.fetchall():
-        print(f"{row[0]:<5} | {row[1]:<25} | Rp{row[2]:<10,} | {row[3]:<5}")
-    print("------------------------------------------------------------")
-    conn.close()
 
-def update_produk():
-    lihat_produk()
-    id_produk = int(input("\nMasukkan ID Produk yang ingin diubah: "))
-    
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM produk WHERE id=?", (id_produk,))
-    if not cursor.fetchone():
-        print("[X] ID Produk tidak ditemukan!")
-        conn.close()
-        return
-        
-    nama = input("Nama Baru       : ")
-    harga_jual = int(input("Harga Jual Baru : "))
-    stok = int(input("Stok Baru       : "))
-    
-    cursor.execute("UPDATE produk SET nama_produk=?, harga_jual=?, stok=? WHERE id=?", 
-                   (nama, harga_jual, stok, id_produk))
-    conn.commit()
-    conn.close()
-    print("[✓] Data produk berhasil diperbarui!")
+    cursor.execute("""
+    SELECT id, nama_produk, harga_modal, harga_jual, stok
+    FROM produk
+    ORDER BY id
+    """)
 
-def hapus_produk():
-    lihat_produk()
-    id_produk = int(input("\nMasukkan ID Produk yang ingin dihapus: "))
-    
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT nama_produk FROM produk WHERE id=?", (id_produk,))
-    produk = cursor.fetchone()
-    
-    if not produk:
-        print("[X] ID Produk tidak ditemukan!")
-        conn.close()
-        return
-        
-    konfirmasi = input(f"Yakin menghapus produk '{produk[0]}'? (Y/T): ").upper()
-    if konfirmasi == 'Y':
-        cursor.execute("DELETE FROM produk WHERE id=?", (id_produk,))
-        conn.commit()
-        print("[✓] Produk berhasil dihapus!")
-    else:
-        print("[-] Penghapusan dibatalkan.")
-    conn.close()
+    data_produk = cursor.fetchall()
 
-def kelola_produk_menu():
-    while True:
-        print("\n===== SUB-MENU KELOLA PRODUK =====")
-        print("1. Tambah Produk")
-        print("2. Lihat Daftar Produk")
-        print("3. Update Data Produk")
-        print("4. Hapus Produk")
-        print("5. Kembali ke Menu Utama")
-        pilihan = input("Pilih Menu (1-5): ")
-        
-        if pilihan == '1': tambah_produk()
-        elif pilihan == '2': lihat_produk()
-        elif pilihan == '3': update_produk()
-        elif pilihan == '4': hapus_produk()
-        elif pilihan == '5': break
-        else: print("[X] Pilihan tidak valid!")
+    print("\n================================")
+    print("         DAFTAR PRODUK")
+    print("================================")
 
-# ==========================================
-# 4. MODUL PENCARIAN PRODUK
-# ==========================================
-def cari_produk():
-    print("\n===== FITUR CARI PRODUK =====")
-    print("1. Cari Berdasarkan Nama")
-    print("2. Cari Berdasarkan ID Produk")
-    pilihan = input("Pilih metode (1-2): ")
-    
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    
-    if pilihan == '1':
-        keyword = input("Masukkan Kata Kunci Nama: ")
-        cursor.execute("SELECT id, nama_produk, harga_jual, stok FROM produk WHERE nama_produk LIKE ?", (f"%{keyword}%",))
-    elif pilihan == '2':
-        id_cari = input("Masukkan ID Produk: ")
-        cursor.execute("SELECT id, nama_produk, harga_jual, stok FROM produk WHERE id=?", (id_cari,))
-    else:
-        print("[X] Pilihan tidak valid.")
-        conn.close()
+    if not data_produk:
+        print("Belum ada produk.")
         return
 
-    hasil = cursor.fetchall()
-    conn.close()
-    
-    if hasil:
-        print("\n------------------------------------------------------------")
-        print(f"{'ID':<5} | {'Nama Barang':<25} | {'Harga Jual':<12} | {'Stok':<5}")
-        print("------------------------------------------------------------")
-        for row in hasil:
-            print(f"{row[0]:<5} | {row[1]:<25} | Rp{row[2]:<10,} | {row[3]:<5}")
-        print("------------------------------------------------------------")
-    else:
-        print("\n[!] Produk tidak ditemukan.")
+    for produk in data_produk:
+
+        print("--------------------------------")
+        print("ID          :", produk[0])
+        print("Nama        :", produk[1])
+        print("Harga Modal : Rp", produk[2])
+        print("Harga Jual  : Rp", produk[3])
+        print("Stok        :", produk[4])
+
+    print("--------------------------------")
+
 
 # ==========================================
-# 5. MODUL KELOLA PRODUK (CRUD)
+# FUNGSI TAMBAH PRODUK
 # ==========================================
+
 def tambah_produk():
-    """Fungsi bagi Admin untuk menambahkan item produk baru ke database."""
-    print("\n--- TAMBAH PRODUK BARU ---")
-    nama = input("Nama Barang : ")
-    harga_modal = int(input("Harga Modal : "))
-    harga_jual = int(input("Harga Jual  : "))
-    stok = int(input("Stok        : "))
-    
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO produk (nama_produk, harga_modal, harga_jual, stok) VALUES (?, ?, ?, ?)",
-                   (nama, harga_modal, harga_jual, stok))
-    conn.commit()
-    conn.close()
-    print("[✓] Produk berhasil ditambahkan!")
 
-def lihat_produk():
-    """Menampilkan semua daftar produk aktif dalam bentuk tabel console."""
-    print("\n------------------------------------------------------------")
-    print(f"{'ID':<5} | {'Nama Barang':<25} | {'Harga Jual':<12} | {'Stok':<5}")
-    print("------------------------------------------------------------")
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, nama_produk, harga_jual, stok FROM produk")
-    for row in cursor.fetchall():
-        print(f"{row[0]:<5} | {row[1]:<25} | Rp{row[2]:<10,} | {row[3]:<5}")
-    print("------------------------------------------------------------")
-    conn.close()
+    print("\n================================")
+    print("         TAMBAH PRODUK")
+    print("================================")
 
-def update_produk():
-    """Mengubah nama, harga jual, dan stok produk berdasarkan input ID."""
-    lihat_produk()
-    id_produk = int(input("\nMasukkan ID Produk yang ingin diubah: "))
-    
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM produk WHERE id=?", (id_produk,))
-    if not cursor.fetchone():
-        print("[X] ID Produk tidak ditemukan!")
-        conn.close()
+    nama = input("Nama produk : ")
+
+    try:
+        modal = int(input("Harga modal : "))
+        jual = int(input("Harga jual  : "))
+        stok = int(input("Jumlah stok : "))
+
+        if modal < 0 or jual < 0 or stok < 0:
+            print("Nilai tidak boleh negatif.")
+            return
+
+    except ValueError:
+        print("Harga dan stok harus berupa angka.")
         return
-        
-    nama = input("Nama Baru       : ")
-    harga_jual = int(input("Harga Jual Baru : "))
-    stok = int(input("Stok Baru       : "))
-    
-    cursor.execute("UPDATE produk SET nama_produk=?, harga_jual=?, stok=? WHERE id=?", 
-                   (nama, harga_jual, stok, id_produk))
+
+    cursor.execute("""
+    INSERT INTO produk
+    (nama_produk, harga_modal, harga_jual, stok)
+    VALUES (?, ?, ?, ?)
+    """, (nama, modal, jual, stok))
+
     conn.commit()
-    conn.close()
-    print("[✓] Data produk berhasil diperbarui!")
+
+    print("\nProduk berhasil ditambahkan!")
+
+
+# ==========================================
+# FUNGSI HAPUS PRODUK
+# ==========================================
 
 def hapus_produk():
-    """Menghapus produk dari database setelah melakukan konfirmasi konseptual (Y/T)."""
+
+    print("\n================================")
+    print("         HAPUS PRODUK")
+    print("================================")
+
     lihat_produk()
-    id_produk = int(input("\nMasukkan ID Produk yang ingin dihapus: "))
-    
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT nama_produk FROM produk WHERE id=?", (id_produk,))
+
+    try:
+        id_produk = int(input("\nMasukkan ID produk : "))
+    except ValueError:
+        print("ID harus berupa angka.")
+        return
+
+    cursor.execute("""
+    SELECT nama_produk
+    FROM produk
+    WHERE id = ?
+    """, (id_produk,))
+
     produk = cursor.fetchone()
-    
-    if not produk:
-        print("[X] ID Produk tidak ditemukan!")
-        conn.close()
+
+    if produk is None:
+        print("Produk tidak ditemukan.")
         return
-        
-    konfirmasi = input(f"Yakin menghapus produk '{produk[0]}'? (Y/T): ").upper()
-    if konfirmasi == 'Y':
-        cursor.execute("DELETE FROM produk WHERE id=?", (id_produk,))
+
+    konfirmasi = input(
+        f"Yakin ingin menghapus {produk[0]}? (y/n): "
+    ).lower()
+
+    if konfirmasi == "y":
+
+        cursor.execute("""
+        DELETE FROM produk
+        WHERE id = ?
+        """, (id_produk,))
+
         conn.commit()
-        print("[✓] Produk berhasil dihapus!")
-    else:
-        print("[-] Penghapusan dibatalkan.")
-    conn.close()
 
-def kelola_produk_menu():
-    """Sub-menu internal navigasi CRUD khusus manajemen produk."""
+        print("Produk berhasil dihapus!")
+
+    else:
+        print("Penghapusan dibatalkan.")
+
+
+# ==========================================
+# MENU KELOLA PRODUK
+# ==========================================
+
+def menu_produk():
+
     while True:
-        print("\n===== SUB-MENU KELOLA PRODUK =====")
-        print("1. Tambah Produk")
-        print("2. Lihat Daftar Produk")
-        print("3. Update Data Produk")
-        print("4. Hapus Produk")
-        print("5. Kembali ke Menu Utama")
-        pilihan = input("Pilih Menu (1-5): ")
-        
-        if pilihan == '1': tambah_produk()
-        elif pilihan == '2': lihat_produk()
-        elif pilihan == '3': update_produk()
-        elif pilihan == '4': hapus_produk()
-        elif pilihan == '5': break
-        else: print("[X] Pilihan tidak valid!")
 
+        print("\n================================")
+        print("         KELOLA PRODUK")
+        print("================================")
+        print("1. Lihat Produk")
+        print("2. Tambah Produk")
+        print("3. Hapus Produk")
+        print("4. Kembali")
+        print("================================")
 
-# ==========================================
-# 6. MODUL PENCARIAN PRODUK
-# ==========================================
-def cari_produk():
-    """Mencari data produk fleksibel berdasarkan kata kunci Nama atau ID khusus."""
-    print("\n===== FITUR CARI PRODUK =====")
-    print("1. Cari Berdasarkan Nama")
-    print("2. Cari Berdasarkan ID Produk")
-    pilihan = input("Pilih metode (1-2): ")
-    
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    
-    if pilihan == '1':
-        keyword = input("Masukkan Kata Kunci Nama: ")
-        cursor.execute("SELECT id, nama_produk, harga_jual, stok FROM produk WHERE nama_produk LIKE ?", (f"%{keyword}%",))
-    elif pilihan == '2':
-        id_cari = input("Masukkan ID Produk: ")
-        cursor.execute("SELECT id, nama_produk, harga_jual, stok FROM produk WHERE id=?", (id_cari,))
-    else:
-        print("[X] Pilihan tidak valid.")
-        conn.close()
-        return
+        pilihan = input("Pilih menu : ")
 
-    hasil = cursor.fetchall()
-    conn.close()
-    
-    if hasil:
-        print("\n------------------------------------------------------------")
-        print(f"{'ID':<5} | {'Nama Barang':<25} | {'Harga Jual':<12} | {'Stok':<5}")
-        print("------------------------------------------------------------")
-        for row in hasil:
-            print(f"{row[0]:<5} | {row[1]:<25} | Rp{row[2]:<10,} | {row[3]:<5}")
-        print("------------------------------------------------------------")
-    else:
-        print("\n[!] Produk tidak ditemukan.")
+        if pilihan == "1":
 
+            lihat_produk()
 
-# ==========================================
-# 7. MODUL TRANSAKSI PENJUALAN & CETAK STRUK
-# ==========================================
-def cetak_struk_ke_file(no_transaksi, tanggal, keranjang, total, bayar, kembalian):
-    """BONUS (+10%): Mencetak struk belanja transaksi secara fisik ke berkas berkstensi file .txt"""
-    nama_file = f"struk_TX_{no_transaksi}.txt"
-    with open(nama_file, "w") as f:
-        f.write("======== SMART RETAIL ========\n")
-        f.write("        Toko Maju Jaya        \n")
-        f.write("   Jl. Merdeka No. 10, Kota   \n")
-        f.write("------------------------------\n")
-        f.write(f"No Transaksi : TX-{no_transaksi}\n")
-        f.write(f"Tanggal      : {tanggal}\n")
-        f.write("------------------------------\n")
-        for item in keranjang:
-            f.write(f"{item['nama'][:14]:<14} {item['jumlah']:>2} x {item['harga']:>6,} = Rp{item['subtotal']:>7,}\n")
-        f.write("------------------------------\n")
-        f.write(f"TOTAL BELANJA : Rp{total:,}\n")
-        f.write(f"UANG BAYAR    : Rp{bayar:,}\n")
-        f.write(f"KEMBALIAN     : Rp{kembalian:,}\n")
-        f.write("------------------------------\n")
-        f.write("  Terima Kasih Atas Kunjungan \n")
-        f.write("             Anda!            \n")
-    print(f"[✓] Struk berhasil dicetak ke file eksternal: {nama_file}")
+        elif pilihan == "2":
 
-def transaksi_penjualan():
-    """Modul antarmuka Kasir utama: entri keranjang, kalkulasi, serta validasi batas stok."""
-    keranjang = []
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    
-    while True:
-        lihat_produk()
-        try:
-            id_barang = int(input("Masukkan ID Barang yang ingin dibeli: "))
-            cursor.execute("SELECT nama_produk, harga_jual, stok FROM produk WHERE id=?", (id_barang,))
-            produk = cursor.fetchone()
-            
-            if not produk:
-                print("[X] Produk tidak ditemukan! Silakan masukkan ID yang valid.")
-                continue
-                
-            nama_produk, harga_jual, stok_tersedia = produk
-            jumlah_beli = int(input(f"Masukkan Jumlah Pembelian untuk '{nama_produk}' (Stok: {stok_tersedia}): "))
-            
-            # 7. VALIDASI EVALUASI KUANTITAS STOK
-            if jumlah_beli > stok_tersedia:
-                print("\n" + "!"*40)
-                print("ERROR: Stok tidak mencukupi.")
-                print("Silakan masukkan jumlah yang lebih kecil.")
-                print("!"*40)
-                continue
-                
-            subtotal = harga_jual * jumlah_beli
-            
-            keranjang.append({
-                'id_produk': id_barang,
-                'nama': nama_produk,
-                'harga': harga_jual,
-                'jumlah': jumlah_beli,
-                'subtotal': subtotal
-            })
-            print(f"[✓] Berhasil menambahkan {jumlah_beli} {nama_produk} ke keranjang belanja.")
-            
-        except ValueError:
-            print("[X] Masukan input data wajib angka numerik!")
-            continue
+            tambah_produk()
 
-        ulang = input("\nTambah barang lain? (Y/T): ").upper()
-        if ulang != 'Y':
+        elif pilihan == "3":
+
+            hapus_produk()
+
+        elif pilihan == "4":
+
             break
-            
-    if not keranjang:
-        print("[-] Keranjang kosong. Operasi transaksi dibatalkan.")
-        conn.close()
-        return
 
-    # Kalkulasi Akumulasi Nilai Total Belanja
-    total_belanja = sum(item['subtotal'] for item in keranjang)
-    print(f"\nTotal Belanja Anda: Rp{total_belanja:,}")
-    
-    # 8. MODUL PEMBAYARAN & HITUNG KEMBALIAN
-    while True:
-        try:
-            uang_bayar = int(input("Uang Bayar    : Rp"))
-            if uang_bayar < total_belanja:
-                print("[X] Uang kurang! Masukkan nominal pembayaran yang sesuai.")
-                continue
-            break
-        except ValueError:
-            print("[X] Silakan isi nominal pembayaran dengan valid!")
-            
-    kembalian = uang_bayar - total_belanja
-    print(f"Kembalian     : Rp{kembalian:,}")
-    
-    # 9. UPDATE STOK OTOMATIS & REKAM DATA HISTORI
-    tanggal_sekarang = datetime.now().strftime("%d/%m/%Y %H:%M")
-    
-    # Simpan data transaksi induk (Master)
-    cursor.execute("INSERT INTO transaksi (tanggal, total_bayar) VALUES (?, ?)", (tanggal_sekarang, total_belanja))
-    id_transaksi_baru = cursor.lastrowid
-    
-    # Simpan detail item transaksi & sinkronisasi pengurangan stok secara otomatis
-    for item in keranjang:
-        cursor.execute("INSERT INTO detail_transaksi (id_transaksi, id_produk, jumlah, subtotal) VALUES (?, ?, ?, ?)",
-                       (id_transaksi_baru, item['id_produk'], item['jumlah'], item['subtotal']))
-        cursor.execute("UPDATE produk SET stok = stok - ? WHERE id = ?", (item['jumlah'], item['id_produk']))
-        
-    conn.commit()
-    conn.close()
-    print("\n[✓] Transaksi Berhasil Disimpan ke Database SQLite!")
-    
-    # Output visual pratinjau struk di layar Terminal Console
-    print("\n========== SMART RETAIL ==========")
-    for item in keranjang:
-        print(f"{item['nama']:<15} {item['jumlah']} x {item['harga']} = Rp{item['subtotal']:,}")
-    print("----------------------------------")
-    print(f"TOTAL BELANJA : Rp{total_belanja:,}")
-    print(f"UANG BAYAR    : Rp{uang_bayar:,}")
-    print(f"KEMBALIAN     : Rp{kembalian:,}")
-    print("==================================")
-    
-    # Eksekusi fungsi bonus cetak berkas struk eksternal TXT
-    cetak_struk_ke_file(id_transaksi_baru, tanggal_sekarang, keranjang, total_belanja, uang_bayar, kembalian)
-
-
-# ==========================================
-# 8. MODUL LAPORAN PENJUALAN & RIWAYAT
-# ==========================================
-def laporan_penjualan():
-    """Menyajikan kompilasi analisis ringkasan omzet performa penjualan toko."""
-    print("\n===== LAPORAN PENJUALAN SISTEM =====")
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    
-    # Mengambil hitungan data transaksi & jumlah nominal omzet masuk
-    cursor.execute("SELECT COUNT(*), SUM(total_bayar) FROM transaksi")
-    res = cursor.fetchone()
-    total_tx = res[0] if res and res[0] else 0
-    total_revenue = res[1] if res and res[1] else 0
-    
-    print(f"Jumlah Transaksi : {total_tx} kali")
-    print(f"Total Penjualan   : Rp{total_revenue:,}")
-    
-    # Mengambil produk terlaris dengan kalkulasi sum penjualan terbanyak
-    cursor.execute('''
-        SELECT p.nama_produk, SUM(dt.jumlah) as total_terjual 
-        FROM detail_transaksi dt
-        JOIN produk p ON dt.id_produk = p.id
-        GROUP BY dt.id_produk
-        ORDER BY total_terjual DESC LIMIT 1
-    ''')
-    terlaris = cursor.fetchone()
-    if terlaris:
-        print(f"Produk Terlaris  : {terlaris[0]} (Terjual {terlaris[1]} pcs)")
-    else:
-        print("Produk Terlaris  : Belum ada rekaman data penjualan")
-        
-    # Pemetaan sistem informasi stok menipis (di bawah batas minimal 10 unit)
-    print("\nProduk yang harus segera restock (Stok < 10):")
-    cursor.execute("SELECT nama_produk, stok FROM produk WHERE stok < 10")
-    restock_list = cursor.fetchall()
-    if restock_list:
-        for p in restock_list:
-            print(f" - {p[0]} ({p[1]} pcs)")
-    else:
-        print(" [✓] Semua kondisi stok produk aman terintegrasi (di atas 10 pcs).")
-    conn.close()
-
-def riwayat_transaksi():
-    """Menampilkan histori catatan log nota belanja transaksi."""
-    print("\n===== RIWAYAT TRANSAKSI =====")
-    print(f"{'ID TX':<6} | {'Tanggal & Waktu':<18} | {'Total Bayar':<12}")
-    print("--------------------------------------------------")
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, tanggal, total_bayar FROM transaksi ORDER BY id DESC")
-    for row in cursor.fetchall():
-        print(f"TX-{row[0]:<3} | {row[1]:<18} | Rp{row[2]:<10,}")
-    print("--------------------------------------------------")
-    conn.close()
-
-# ==========================================
-# 9. DRIVER CODE / MAIN PROGRAM CORE
-# ==========================================
-def main():
-    """Fungsi utama pengontrol alur program dan validasi hak akses menu."""
-    # Inisialisasi database dan tabel saat pertama kali dijalankan
-    inisialisasi_database()
-    user_aktif = None
-    
-    while True:
-        # Pengecekan sesi login pengguna aktif
-        if not user_aktif:
-            user_aktif = login_sistem()
-            if not user_aktif:
-                input("\nTekan Enter untuk melakukan login ulang sistem...")
-                continue
-                
-        # Struktur Interface Utama Aplikasi Smart-Retail
-        print("\n===== SMART RETAIL =====")
-        print("1. Kelola Produk")
-        print("2. Transaksi Penjualan")
-        print("3. Cari Produk")
-        print("4. Laporan Penjualan")
-        print("5. Logout")
-        pilihan = input("Pilih Menu (1-5): ")
-        
-        # Opsi 1: Modul Kelola Produk (Eksklusif Admin)
-        if pilihan == '1':
-            if user_aktif['role'] == 'Admin':
-                kelola_produk_menu()
-            else:
-                print("\n[X] HAK AKSES DITOLAK: Fitur Kelola Produk hanya untuk level Admin!")
-                
-        # Opsi 2: Modul Transaksi Penjualan (Akses: Admin & Kasir)
-        elif pilihan == '2':
-            if user_aktif['role'] in ['Admin', 'Kasir']:
-                transaksi_penjualan()
-            else:
-                print("\n[X] Anda tidak mempunyai otoritas akses menu transaksi.")
-                
-        # Opsi 3: Modul Pencarian Produk (Akses: Semua Pengguna)
-        elif pilihan == '3':
-            cari_produk()
-            
-        # Opsi 4: Modul Laporan Penjualan & Riwayat (Eksklusif Admin)
-        elif pilihan == '4':
-            if user_aktif['role'] == 'Admin':
-                while True:
-                    print("\n-- Menu Opsi Laporan --")
-                    print("1. Ringkasan Laporan Statistik Penjualan")
-                    print("2. Lihat Riwayat Log Semua Transaksi")
-                    print("3. Kembali Ke Menu Utama")
-                    sub_lap = input("Pilih Opsi (1-3): ")
-                    
-                    if sub_lap == '1': 
-                        laporan_penjualan()
-                    elif sub_lap == '2': 
-                        riwayat_transaksi()
-                    elif sub_lap == '3': 
-                        break
-                    else:
-                        print("[X] Pilihan sub-menu salah, silakan ulangi.")
-            else:
-                print("\n[X] HAK AKSES DITOLAK: Menu Laporan Penjualan eksklusif hanya untuk Admin!")
-                
-        # Opsi 5: Sistem Logout / Keluar Sesi Akun
-        elif pilihan == '5':
-            print(f"\n[-] Akun {user_aktif['username']} telah berhasil logout dari sistem.")
-            user_aktif = None
-            
-        # Validasi jika input menu utama di luar angka 1-5
         else:
-            print("[X] Input pilihan menu salah, silakan ulangi kembali!")
 
-if __name__ == "__main__":
-    main()
+            print("Pilihan tidak tersedia!")
 
+
+# ==========================================
+# LIHAT TRANSAKSI
+# ==========================================
+
+def lihat_transaksi():
+
+    print("\n================================")
+    print("         DATA TRANSAKSI")
+    print("================================")
+
+    cursor.execute("""
+    SELECT id, tanggal, total_bayar
+    FROM transaksi
+    ORDER BY id DESC
+    """)
+
+    transaksi = cursor.fetchall()
+
+    if not transaksi:
+        print("Belum ada transaksi.")
+        return
+
+    for data in transaksi:
+
+        print("--------------------------------")
+        print("ID Transaksi :", data[0])
+        print("Tanggal      :", data[1])
+        print("Total Bayar  : Rp", data[2])
+
+
+# ==========================================
+# LIHAT USER
+# ==========================================
+
+def lihat_user():
+
+    print("\n================================")
+    print("           DATA USER")
+    print("================================")
+
+    cursor.execute("""
+    SELECT id, username, role
+    FROM users
+    ORDER BY id
+    """)
+
+    users = cursor.fetchall()
+
+    for user in users:
+
+        print("--------------------------------")
+        print("ID       :", user[0])
+        print("Username :", user[1])
+        print("Role     :", user[2])
+
+
+# ==========================================
+# LIHAT STOK
+# ==========================================
+
+def lihat_stok():
+
+    print("\n================================")
+    print("           STOK PRODUK")
+    print("================================")
+
+    cursor.execute("""
+    SELECT id, nama_produk, stok
+    FROM produk
+    ORDER BY id
+    """)
+
+    stok_produk = cursor.fetchall()
+
+    for produk in stok_produk:
+
+        print("--------------------------------")
+        print("ID     :", produk[0])
+        print("Produk :", produk[1])
+        print("Stok   :", produk[2])
+
+
+# ==========================================
+# TRANSAKSI KASIR
+# ==========================================
+
+def transaksi_kasir():
+
+    print("\n================================")
+    print("          TRANSAKSI")
+    print("================================")
+
+    lihat_produk()
+
+    try:
+        id_produk = int(input("\nMasukkan ID produk : "))
+        jumlah = int(input("Jumlah beli        : "))
+
+        if jumlah <= 0:
+            print("Jumlah harus lebih dari 0.")
+            return
+
+    except ValueError:
+        print("ID dan jumlah harus berupa angka.")
+        return
+
+    cursor.execute("""
+    SELECT nama_produk, harga_jual, stok
+    FROM produk
+    WHERE id = ?
+    """, (id_produk,))
+
+    produk = cursor.fetchone()
+
+    if produk is None:
+
+        print("Produk tidak ditemukan.")
+        return
+
+    nama_produk = produk[0]
+    harga_jual = produk[1]
+    stok = produk[2]
+
+    if jumlah > stok:
+
+        print("\nStok tidak mencukupi!")
+        print("Stok tersedia :", stok)
+
+        return
+
+    subtotal = harga_jual * jumlah
+
+    print("\n================================")
+    print("        DETAIL TRANSAKSI")
+    print("================================")
+    print("Produk   :", nama_produk)
+    print("Harga    : Rp", harga_jual)
+    print("Jumlah   :", jumlah)
+    print("Subtotal : Rp", subtotal)
+
+    konfirmasi = input("\nSimpan transaksi? (y/n): ").lower()
+
+    if konfirmasi != "y":
+
+        print("Transaksi dibatalkan.")
+        return
+
+    tanggal = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Simpan transaksi
+    cursor.execute("""
+    INSERT INTO transaksi
+    (tanggal, total_bayar)
+    VALUES (?, ?)
+    """, (tanggal, subtotal))
+
+    id_transaksi = cursor.lastrowid
+
+    # Simpan detail transaksi
+    cursor.execute("""
+    INSERT INTO detail_transaksi
+    (id_transaksi, id_produk, jumlah, subtotal)
+    VALUES (?, ?, ?, ?)
+    """, (
+        id_transaksi,
+        id_produk,
+        jumlah,
+        subtotal
+    ))
+
+    # Kurangi stok
+    cursor.execute("""
+    UPDATE produk
+    SET stok = stok - ?
+    WHERE id = ?
+    """, (jumlah, id_produk))
+
+    conn.commit()
+
+    print("\n================================")
+    print("     TRANSAKSI BERHASIL")
+    print("================================")
+    print("ID Transaksi :", id_transaksi)
+    print("Produk       :", nama_produk)
+    print("Jumlah       :", jumlah)
+    print("Total Bayar  : Rp", subtotal)
+    print("Tanggal      :", tanggal)
+
+
+# ==========================================
+# MENU ADMIN
+# ==========================================
+
+def menu_admin():
+
+    while True:
+
+        print("\n==============================")
+        print("          MENU ADMIN")
+        print("==============================")
+        print("1. Kelola Produk")
+        print("2. Kelola Transaksi")
+        print("3. Kelola User")
+        print("4. Lihat Stok")
+        print("5. Logout")
+        print("==============================")
+
+        pilihan = input("Pilih menu : ")
+
+        if pilihan == "1":
+
+            menu_produk()
+
+        elif pilihan == "2":
+
+            lihat_transaksi()
+
+        elif pilihan == "3":
+
+            lihat_user()
+
+        elif pilihan == "4":
+
+            lihat_stok()
+
+        elif pilihan == "5":
+
+            print("\nLogout berhasil.")
+            break
+
+        else:
+
+            print("\nPilihan tidak tersedia!")
+
+
+# ==========================================
+# MENU KASIR
+# ==========================================
+
+def menu_kasir():
+
+    while True:
+
+        print("\n==============================")
+        print("          MENU KASIR")
+        print("==============================")
+        print("1. Lihat Produk")
+        print("2. Transaksi")
+        print("3. Lihat Stok")
+        print("4. Logout")
+        print("==============================")
+
+        pilihan = input("Pilih menu : ")
+
+        if pilihan == "1":
+
+            lihat_produk()
+
+        elif pilihan == "2":
+
+            transaksi_kasir()
+
+        elif pilihan == "3":
+
+            lihat_stok()
+
+        elif pilihan == "4":
+
+            print("\nLogout berhasil.")
+            break
+
+        else:
+
+            print("\nPilihan tidak tersedia!")
+
+
+# ==========================================
+# SISTEM LOGIN
+# ==========================================
+
+print("\n================================")
+print("          SMART RETAIL")
+print("================================")
+print("          SISTEM LOGIN")
+print("================================")
+
+username = input("Username : ")
+password = input("Password : ")
+
+
+cursor.execute("""
+SELECT id, username, role
+FROM users
+WHERE username = ?
+AND password = ?
+""", (username, password))
+
+user = cursor.fetchone()
+
+
+# ==========================================
+# HASIL LOGIN
+# ==========================================
+
+if user:
+
+    user_id = user[0]
+    username_login = user[1]
+    role = user[2]
+
+    print("\n================================")
+    print("        LOGIN BERHASIL")
+    print("================================")
+    print("Selamat datang,", username_login)
+    print("Role :", role)
+    print("================================")
+
+    if role == "admin":
+
+        print("\nSelamat datang, Admin!")
+        menu_admin()
+
+    elif role == "kasir":
+
+        print("\nSelamat datang, Kasir!")
+        menu_kasir()
+
+    else:
+
+        print("Role tidak dikenali.")
+
+else:
+
+    print("\n================================")
+    print("          LOGIN GAGAL")
+    print("================================")
+    print("Username atau password salah!")
+
+
+# ==========================================
+# MENUTUP DATABASE
+# ==========================================
+
+conn.close()
+
+print("\nProgram selesai.")
