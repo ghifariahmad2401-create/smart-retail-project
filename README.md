@@ -33,3 +33,4 @@ Aplikasi kasir dan manajemen toko berbasis Python (CLI) dengan database SQLite. 
 - `main.py` : program utama
 - `smart_retail.db` : database SQLite
 - `requirements.txt` : daftar dependensi
+- `reset_db.py` : mengatur ulang database ke data awal
